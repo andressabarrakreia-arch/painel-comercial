@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Desempenho Comercial - Lojas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Cabeçalho -->
+        <header class="bg-white shadow-sm rounded-2xl p-6 mb-6 border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">📊 Painel de Desempenho Comercial & Conversões</h1>
+                <p class="text-sm text-slate-500 mt-1">Regra de Negócios: Vendas, Trocas (Deduplicadas), Consignações e Compras (Excluindo Compra de Consignado)</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="loadStatus" class="bg-emerald-50 text-emerald-700 font-bold px-4 py-2 rounded-xl text-xs">Carregando dados do GitHub...</span>
+            </div>
+        </header>
+
+        <!-- Área de Upload (Opcional caso queira substituir manualmente) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">Passo 1</span>
+                    <h3 class="font-bold text-slate-900 mt-3">📁 Negociações</h3>
+                    <p class="text-xs text-slate-500 mt-1">Carregado automatico ou envie novo</p>
+                </div>
+                <div class="mt-4">
+                    <input type="file" id="fileNeg" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <p id="statusNeg" class="text-xs text-slate-400 mt-2 text-center truncate">NEGOCIAÇÕES.xlsx</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">Passo 2</span>
+                    <h3 class="font-bold text-slate-900 mt-3">📁 Visitas e Vendas</h3>
+                    <p class="text-xs text-slate-500 mt-1">Carregado automatico ou envie novo</p>
+                </div>
+                <div class="mt-4">
+                    <input type="file" id="filePerf" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                    <p id="statusPerf" class="text-xs text-slate-400 mt-2 text-center truncate">performance-vendas.xlsx</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Passo 3</span>
+                    <h3 class="font-bold text-slate-900 mt-3">📁 Avaliações</h3>
+                    <p class="text-xs text-slate-500 mt-1">Carregado automatico ou envie novo</p>
+                </div>
+                <div class="mt-4">
+                    <input type="file" id="fileConv" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+                    <p id="statusConv" class="text-xs text-slate-400 mt-2 text-center truncate">conversao-avaliacao.xlsx</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de Abas -->
+        <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-200 pb-3" id="tabButtons">
+            <button onclick="switchTab('resumo')" class="tab-btn px-5 py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-sm transition">📋 Resumo Loja</button>
+            <button onclick="switchTab('desempenho')" class="tab-btn px-5 py-2.5 rounded-xl font-medium text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">🏆 Desempenho por Vendedor</button>
+            <button onclick="switchTab('conversoes')" class="tab-btn px-5 py-2.5 rounded-xl font-medium text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">📈 Conversões</button>
+            <button onclick="switchTab('ranking_conv')" class="tab-btn px-5 py-2.5 rounded-xl font-medium text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">🏅 Ranking Conversões</button>
+            <button onclick="switchTab('lancamentos')" class="tab-btn px-5 py-2.5 rounded-xl font-medium text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition">📝 Lançamentos & Deduplicação</button>
+        </div>
+
+        <!-- Conteúdo das Abas -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div id="tab-resumo" class="tab-content space-y-6">
+                <div class="flex justify-between items-center border-b pb-4">
+                    <h2 class="text-xl font-bold text-slate-900">Resumo Geral da Loja</h2>
+                    <span class="bg-blue-50 text-blue-700 font-bold px-3 py-1 rounded-lg text-sm">Estado: Sincronizado</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200"><p class="text-xs uppercase font-semibold text-slate-500">Total de Vendas</p><h3 id="resumoVendas" class="text-3xl font-extrabold text-slate-900 mt-2">0</h3></div>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200"><p class="text-xs uppercase font-semibold text-slate-500">Total de Trocas</p><h3 id="resumoTrocas" class="text-3xl font-extrabold text-slate-900 mt-2">0</h3></div>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200"><p class="text-xs uppercase font-semibold text-slate-500">Total de Consignações</p><h3 id="resumoConsignacoes" class="text-3xl font-extrabold text-slate-900 mt-2">0</h3></div>
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200"><p class="text-xs uppercase font-semibold text-slate-500">Total de Compras</p><h3 id="resumoCompras" class="text-3xl font-extrabold text-slate-900 mt-2">0</h3></div>
+                    <div class="bg-blue-50 p-5 rounded-xl border border-blue-200 lg:col-span-1"><p class="text-xs uppercase font-semibold text-blue-600">TOTAL NEGÓCIOS</p><h3 id="resumoTotalNegocios" class="text-3xl font-extrabold text-blue-700 mt-2">0</h3></div>
+                </div>
+            </div>
+
+            <div id="tab-desempenho" class="tab-content hidden space-y-6">
+                <h2 class="text-xl font-bold text-slate-900">Desempenho por Vendedor & Ranking Geral</h2>
+                <div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase bg-slate-50"><th class="py-3 px-4">Vendedor</th><th class="py-3 px-4 text-center">Vendas</th><th class="py-3 px-4 text-center">Trocas</th><th class="py-3 px-4 text-center">Consignações</th><th class="py-3 px-4 text-center">Compras</th><th class="py-3 px-4 text-center font-bold text-slate-900">Total Geral</th></tr></thead><tbody id="tableDesempenho" class="text-sm divide-y divide-slate-100"></tbody></table></div>
+            </div>
+
+            <div id="tab-conversoes" class="tab-content hidden space-y-6">
+                <h2 class="text-xl font-bold text-slate-900">Métricas de Atendimento, Visitas e Avaliações</h2>
+                <div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase bg-slate-50"><th class="py-3 px-4">Vendedor</th><th class="py-3 px-4 text-center">Agendamentos</th><th class="py-3 px-4 text-center">Visitas</th><th class="py-3 px-4 text-center">Sucessos (Negócios)</th><th class="py-3 px-4 text-center">Conv. Visita → Negócio</th><th class="py-3 px-4 text-center">Avaliações (Aprov./Realiz.)</th><th class="py-3 px-4 text-center">Conv. Avaliação → Entrada</th></tr></thead><tbody id="tableConversoes" class="text-sm divide-y divide-slate-100"></tbody></table></div>
+            </div>
+
+            <div id="tab-ranking_conv" class="tab-content hidden space-y-6">
+                <h2 class="text-xl font-bold text-slate-900">Ranking Oficial de Conversões</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="border border-slate-200 rounded-xl p-5"><h3 class="font-bold text-slate-800 mb-4">🎯 Conv. Visita → Negócio</h3><table class="w-full text-left"><thead><tr class="text-xs font-semibold text-slate-500 border-b"><th class="py-2">Pos</th><th class="py-2">Vendedor</th><th class="py-2 text-right">Taxa</th></tr></thead><tbody id="rankingVisitaNegocio" class="text-sm divide-y divide-slate-100"></tbody></table></div>
+                    <div class="border border-slate-200 rounded-xl p-5"><h3 class="font-bold text-slate-800 mb-4">🚗 Conv. Avaliação → Entrada (Angariação)</h3><table class="w-full text-left"><thead><tr class="text-xs font-semibold text-slate-500 border-b"><th class="py-2">Pos</th><th class="py-2">Vendedor</th><th class="py-2 text-right">Taxa</th></tr></thead><tbody id="rankingAvaliacaoEntrada" class="text-sm divide-y divide-slate-100"></tbody></table></div>
+                </div>
+            </div>
+
+            <div id="tab-lancamentos" class="tab-content hidden space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4"><h2 class="text-xl font-bold text-slate-900">Lançamentos e Negociações</h2><input type="text" id="searchInput" placeholder="Filtrar..." class="border border-slate-200 rounded-xl px-4 py-2 text-sm w-full sm:w-80"></div>
+                <div class="overflow-x-auto max-h-[500px]"><table class="w-full text-left border-collapse"><thead><tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase bg-slate-50 sticky top-0"><th class="py-3 px-4">Negociação</th><th class="py-3 px-4">Data</th><th class="py-3 px-4">Vendedor</th><th class="py-3 px-4">Cliente</th><th class="py-3 px-4">Tipo</th><th class="py-3 px-4">Placa</th></tr></thead><tbody id="tableLancamentos" class="text-sm divide-y divide-slate-100"></tbody></table></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => { btn.className = "tab-btn px-5 py-2.5 rounded-xl font-medium text-sm bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition"; });
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            event.currentTarget.className = "tab-btn px-5 py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-sm transition";
+        }
+
+        let stateNeg = [];
+        let statePerf = [];
+        let stateConv = [];
+
+        async function loadGithubFiles() {
+            try {
+                // 1. Carregar Negociações
+                const resNeg = await fetch('NEGOCIAÇÕES.xlsx');
+                if (resNeg.ok) {
+                    const bufNeg = await resNeg.arrayBuffer();
+                    const wbNeg = XLSX.read(bufNeg, { type: 'array' });
+                    const jsonNeg = XLSX.utils.sheet_to_json(wbNeg.Sheets[wbNeg.SheetNames[0]]);
+                    stateNeg = jsonNeg.map(r => ({
+                        Negociacao: r['Negociação'] || r['Negociacao'] || Math.floor(Math.random()*100000),
+                        Data: r['Data Entrada'] || r['Data'] || '-',
+                        Vendedor: r['Vendedor Negociação'] || r['Vendedor'] || 'Não Identificado',
+                        Cliente: r['Cliente Negociação'] || r['Cliente'] || '-',
+                        Tipo: r['Tipo Negociação'] || r['Tipo'] || 'Venda',
+                        Placa: r['Placa'] || '-'
+                    }));
+                }
+
+                // 2. Carregar Performance
+                const resPerf = await fetch('performance-vendas.xlsx');
+                if (resPerf.ok) {
+                    const bufPerf = await resPerf.arrayBuffer();
+                    const wbPerf = XLSX.read(bufPerf, { type: 'array' });
+                    const jsonPerf = XLSX.utils.sheet_to_json(wbPerf.Sheets[wbPerf.SheetNames[0]]);
+                    statePerf = jsonPerf.map(r => {
+                        let resp = String(r['Responsável'] || r['Vendedor'] || '');
+                        let vendName = resp.replace(' - Vendedor', '').replace(' - Gerente Comercial', '').trim();
+                        return {
+                            Vendedor: vendName,
+                            Agendamentos: Number(r['Agendamentos'] || 0),
+                            Visitas: Number(r['Visitas'] || 0),
+                            Sucessos: Number(r['Sucessos'] || 0)
+                        };
+                    }).filter(r => r.Vendedor && r.Vendedor !== 'Total');
+                }
+
+                // 3. Carregar Avaliações
+                const resConv = await fetch('conversao-avaliacao.xlsx');
+                if (resConv.ok) {
+                    const bufConv = await resConv.arrayBuffer();
+                    const wbConv = XLSX.read(bufConv, { type: 'array' });
+                    const jsonConv = XLSX.utils.sheet_to_json(wbConv.Sheets[wbConv.SheetNames[0]], { header: 1 });
+                    let parsedConv = [];
+                    for (let i = 2; i < jsonConv.length; i++) {
+                        let row = jsonConv[i];
+                        if (row && row[0] && row[0] !== 'Total' && !String(row[0]).includes('Avaliações')) {
+                            parsedConv.push({
+                                Vendedor: String(row[0]).trim(),
+                                Aprovadas: Number(row[1] || 0),
+                                Realizadas: Number(row[2] || 0)
+                            });
+                        }
+                    }
+                    stateConv = parsedConv;
+                }
+
+                document.getElementById('loadStatus').innerText = "✅ Dados carregados do GitHub";
+                processAndRenderAll();
+            } catch (err) {
+                console.warn("Erro ao buscar arquivos automáticos, aguardando upload manual:", err);
+                document.getElementById('loadStatus').innerText = "⚠️ Envie os arquivos manualmente";
+                document.getElementById('loadStatus').className = "bg-amber-50 text-amber-700 font-bold px-4 py-2 rounded-xl text-xs";
+            }
+        }
+
+        function processAndRenderAll() {
+            try {
+                const uniqueMap = {};
+                stateNeg.forEach(t => {
+                    const tipoRaw = String(t.Tipo || "").trim().toLowerCase();
+                    if (tipoRaw.includes('compra de consignado')) return;
+                    const negId = t.Negociacao || Math.random();
+                    const vendedor = t.Vendedor || "Não Identificado";
+
+                    if (!uniqueMap[negId]) {
+                        uniqueMap[negId] = { negociacao: negId, data: t.Data || "-", vendedor: vendedor, cliente: t.Cliente || "-", tipo: tipoRaw, placa: t.Placa || "-" };
+                    }
+                });
+                const deduplicated = Object.values(uniqueMap);
+
+                const stats = {};
+                deduplicated.forEach(item => {
+                    const v = item.vendedor;
+                    if (!stats[v]) stats[v] = { vendas: 0, trocas: 0, consignacoes: 0, compras: 0, total: 0 };
+                    if (item.tipo.includes('venda')) stats[v].vendas++;
+                    else if (item.tipo.includes('troca')) stats[v].trocas++;
+                    else if (item.tipo.includes('consigna')) stats[v].consignacoes++;
+                    else if (item.tipo.includes('compra')) stats[v].compras++;
+                });
+
+                let totV = 0, totT = 0, totC = 0, totComp = 0;
+                Object.keys(stats).forEach(v => {
+                    const s = stats[v];
+                    s.total = s.vendas + s.trocas + s.consignacoes + s.compras;
+                    totV += s.vendas; totT += s.trocas; totC += s.consignacoes; totComp += s.compras;
+                });
+
+                document.getElementById('resumoVendas').innerText = totV;
+                document.getElementById('resumoTrocas').innerText = totT;
+                document.getElementById('resumoConsignacoes').innerText = totC;
+                document.getElementById('resumoCompras').innerText = totComp;
+                document.getElementById('resumoTotalNegocios').innerText = totV + totT + totC + totComp;
+
+                const tbodyDesempenho = document.getElementById('tableDesempenho');
+                tbodyDesempenho.innerHTML = '';
+                Object.keys(stats).sort((a, b) => stats[b].total - stats[a].total).forEach(v => {
+                    const st = stats[v];
+                    tbodyDesempenho.innerHTML += `<tr class="hover:bg-slate-50 transition-colors"><td class="py-3 px-4 font-semibold text-slate-900">${v}</td><td class="py-3 px-4 text-center">${st.vendas}</td><td class="py-3 px-4 text-center">${st.trocas}</td><td class="py-3 px-4 text-center">${st.consignacoes}</td><td class="py-3 px-4 text-center">${st.compras}</td><td class="py-3 px-4 text-center font-bold text-blue-600">${st.total}</td></tr>`;
+                });
+
+                const perfMap = {}; statePerf.forEach(p => { perfMap[p.Vendedor] = p; });
+                const convMap = {}; stateConv.forEach(c => { convMap[c.Vendedor] = c; });
+
+                const tbodyConv = document.getElementById('tableConversoes');
+                tbodyConv.innerHTML = '';
+                const allV = new Set([...Object.keys(stats), ...Object.keys(perfMap), ...Object.keys(convMap)]);
+                const rankingVisitaArr = [], rankingAvalArr = [];
+
+                allV.forEach(v => {
+                    const p = perfMap[v] || { Agendamentos: 0, Visitas: 0, Sucessos: stats[v] ? stats[v].total : 0 };
+                    const c = convMap[v] || { Aprovadas: 0, Realizadas: 0 };
+                    const taxaVisita = p.Visitas > 0 ? (p.Sucessos / p.Visitas) : 0;
+                    const taxaAval = c.Realizadas > 0 ? (c.Aprovadas / c.Realizadas) : 0;
+
+                    rankingVisitaArr.push({ Vendedor: v, Visitas: p.Visitas, Sucessos: p.Sucessos, taxa: taxaVisita });
+                    rankingAvalArr.push({ Vendedor: v, Realizadas: c.Realizadas, Aprovadas: c.Aprovadas, taxa: taxaAval });
+
+                    tbodyConv.innerHTML += `<tr class="hover:bg-slate-50 transition-colors"><td class="py-3 px-4 font-semibold text-slate-900">${v}</td><td class="py-3 px-4 text-center">${p.Agendamentos}</td><td class="py-3 px-4 text-center">${p.Visitas}</td><td class="py-3 px-4 text-center font-bold">${p.Sucessos}</td><td class="py-3 px-4 text-center font-mono text-xs text-blue-600 font-bold">${(taxaVisita * 100).toFixed(1)}%</td><td class="py-3 px-4 text-center">${c.Aprovadas} / ${c.Realizadas}</td><td class="py-3 px-4 text-center font-mono text-xs text-emerald-600 font-bold">${(taxaAval * 100).toFixed(1)}%</td></tr>`;
+                });
+
+                rankingVisitaArr.sort((a, b) => b.taxa - a.taxa);
+                rankingAvalArr.sort((a, b) => b.taxa - a.taxa);
+
+                const tbodyRankVisita = document.getElementById('rankingVisitaNegocio');
+                tbodyRankVisita.innerHTML = '';
+                rankingVisitaArr.forEach((item, idx) => {
+                    tbodyRankVisita.innerHTML += `<tr class="border-b border-slate-100 text-sm"><td class="py-2 font-bold text-slate-500">#${idx + 1}</td><td class="py-2 font-semibold text-slate-900">${item.Vendedor}</td><td class="py-2 text-right font-bold text-blue-600">${(item.taxa * 100).toFixed(1)}%</td></tr>`;
+                });
+
+                const tbodyRankAval = document.getElementById('rankingAvaliacaoEntrada');
+                tbodyRankAval.innerHTML = '';
+                rankingAvalArr.forEach((item, idx) => {
+                    tbodyRankAval.innerHTML += `<tr class="border-b border-slate-100 text-sm"><td class="py-2 font-bold text-slate-500">#${idx + 1}</td><td class="py-2 font-semibold text-slate-900">${item.Vendedor}</td><td class="py-2 text-right font-bold text-emerald-600">${(item.taxa * 100).toFixed(1)}%</td></tr>`;
+                });
+
+                const tbodyLanc = document.getElementById('tableLancamentos');
+                tbodyLanc.innerHTML = '';
+                deduplicated.forEach(t => {
+                    tbodyLanc.innerHTML += `<tr class="hover:bg-slate-50 transition-colors"><td class="py-3 px-4 font-mono text-xs font-semibold text-slate-700">#${t.negociacao}</td><td class="py-3 px-4 text-slate-600 text-xs">${t.data}</td><td class="py-3 px-4 font-medium text-slate-900">${t.vendedor}</td><td class="py-3 px-4 text-slate-700">${t.cliente}</td><td class="py-3 px-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">${t.tipo.toUpperCase()}</span></td><td class="py-3 px-4 font-mono text-xs text-slate-600">${t.placa}</td></tr>`;
+                });
+
+                document.getElementById('searchInput').oninput = function(e) {
+                    const term = e.target.value.toLowerCase();
+                    const filtered = deduplicated.filter(t => String(t.negociacao).toLowerCase().includes(term) || t.vendedor.toLowerCase().includes(term) || t.cliente.toLowerCase().includes(term));
+                    tbodyLanc.innerHTML = '';
+                    filtered.forEach(t => {
+                        tbodyLanc.innerHTML += `<tr class="hover:bg-slate-50 transition-colors"><td class="py-3 px-4 font-mono text-xs font-semibold text-slate-700">#${t.negociacao}</td><td class="py-3 px-4 text-slate-600 text-xs">${t.data}</td><td class="py-3 px-4 font-medium text-slate-900">${t.vendedor}</td><td class="py-3 px-4 text-slate-700">${t.cliente}</td><td class="py-3 px-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">${t.tipo.toUpperCase()}</span></td><td class="py-3 px-4 font-mono text-xs text-slate-600">${t.placa}</td></tr>`;
+                    });
+                };
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Permitir upload manual caso queira substituir os arquivos em tempo de execução
+        document.getElementById('fileNeg').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                stateNeg = json.map(r => ({
+                    Negociacao: r['Negociação'] || r['Negociacao'] || Math.floor(Math.random()*100000),
+                    Data: r['Data Entrada'] || r['Data'] || '-',
+                    Vendedor: r['Vendedor Negociação'] || r['Vendedor'] || 'Não Identificado',
+                    Cliente: r['Cliente Negociação'] || r['Cliente'] || '-',
+                    Tipo: r['Tipo Negociação'] || r['Tipo'] || 'Venda',
+                    Placa: r['Placa'] || '-'
+                }));
+                processAndRenderAll();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById('filePerf').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                statePerf = json.map(r => {
+                    let resp = String(r['Responsável'] || r['Vendedor'] || '');
+                    let vendName = resp.replace(' - Vendedor', '').replace(' - Gerente Comercial', '').trim();
+                    return {
+                        Vendedor: vendName,
+                        Agendamentos: Number(r['Agendamentos'] || 0),
+                        Visitas: Number(r['Visitas'] || 0),
+                        Sucessos: Number(r['Sucessos'] || 0)
+                    };
+                }).filter(r => r.Vendedor && r.Vendedor !== 'Total');
+                processAndRenderAll();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById('fileConv').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+                let parsedConv = [];
+                for (let i = 2; i < json.length; i++) {
+                    let row = json[i];
+                    if (row && row[0] && row[0] !== 'Total' && !String(row[0]).includes('Avaliações')) {
+                        parsedConv.push({
+                            Vendedor: String(row[0]).trim(),
+                            Aprovadas: Number(row[1] || 0),
+                            Realizadas: Number(row[2] || 0)
+                        });
+                    }
+                }
+                stateConv = parsedConv;
+                processAndRenderAll();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Carregar automaticamente do GitHub ao iniciar a página
+        window.onload = loadGithubFiles;
+    </script>
+</body>
+</html>
